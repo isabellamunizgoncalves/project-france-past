@@ -22,5 +22,14 @@
 - Tout le reste dessiné en code : table en chêne, carte scolaire de France, calendrier, fiche de paie,
   pièces, lettre, TV N&B (sans personnage), épingles de température, rangée de souliers, givre, neige.
 
-## Prochaine étape
-Alignement mot à mot -> tableau des beats -> validation par l'utilisatrice -> construction.
+## Construction (fait)
+- `audio/words.json` : timings mot à mot ; `BEATS.md` : tableau des beats **validé**.
+- `render/` : `engine.py` (caméra, textes, fondus, grain), `props.py` (tout ce qui est dessiné en code),
+  `timeline.py` (les 59 beats), `music.py` (musique originale + ducking), `render.py` (rendu parallèle).
+- Carte : contours GSHHS/frontières (paquet pip basemap-data) -> `assets/france_map.json` via `tools/mapdata.py`.
+- Commandes :
+  - `python3 render/music.py out/mix.wav`
+  - `python3 render/render.py video out/noel_1962_4k_video.mp4 --size 3840x2160 --jobs 4 --crf 18`
+  - `ffmpeg -i out/noel_1962_4k_video.mp4 -i out/mix.wav -c:v copy -c:a aac -b:a 256k -shortest out/noel_1962_4k.mp4`
+  - prévisualisation : `--size 1280x720` ; images fixes : `python3 render/render.py stills DIR T1 T2 ... --size 1280x720`
+- `out/` et `cache/` ne sont pas versionnés (vidéo trop lourde pour git).
