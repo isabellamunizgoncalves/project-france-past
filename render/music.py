@@ -1,13 +1,13 @@
-# Noël 1962 — original music-box / piano score synthesized in numpy, ducked under the narration.
+# Noël 1962 — original solo-piano score synthesized in numpy, ducked under the narration.
 #   python3 render/music.py out/mix.wav
-# Waltz, 3/4 at 66 bpm. Themes A and B in D major, a sparse B-minor section during the cold wave
-# (≈192–258 s), warm full arrangement on Christmas morning, final D chord at the end.
+# Slow 3/4 at 50 bpm, soft piano only. Themes A and B in D major, B minor during the cold wave
+# (≈186–252 s), every third phrase only chords (breathing room), final rolled D chord at the end.
 import json, os, sys, subprocess
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SR = 48000
-BPM = 66
+BPM = 50
 BEAT = 60 / BPM
 BAR = 3 * BEAT
 DUR = 484.23
@@ -46,6 +46,21 @@ def piano(f, dur, vel=1.0):
     rel = np.clip(1 - (t - dur) / 1.0, 0, 1)  # damper after note length
     return out * att * rel * vel * 0.35
 
+def soft_piano(f, dur, vel=1.0):
+    """Warm, felt-like piano: few harmonics, two slightly detuned strings, pedal-long release."""
+    n = int(SR * (dur + 3.0)); t = np.arange(n) / SR
+    out = np.zeros(n)
+    bright = np.clip(1.4 - f / 900, 0.3, 1.0)
+    for h in range(1, 6):
+        if f * h > 3500: break
+        a = (1 / h ** 2.4) * (bright if h > 1 else 1)
+        dec = 0.55 + 0.35 * h + f / 2000
+        for det in (-0.0004, 0.0004):
+            out += 0.5 * a * np.sin(2 * np.pi * f * h * (1 + det) * (1 + 0.0003 * h * h) * t + h) * np.exp(-t * dec)
+    att = np.minimum(1, t / 0.012)
+    rel = np.clip(1 - (t - dur) / 2.5, 0, 1) ** 2
+    return out * att * rel * vel * 0.4
+
 def pad(f, dur, vel=1.0):
     n = int(SR * (dur + 1.5)); t = np.arange(n) / SR
     out = sum((1 / h ** 2) * np.sin(2 * np.pi * f * h * t + 0.3 * h + 0.002 * np.sin(2 * np.pi * 4.5 * t)) for h in (1, 2, 3))
@@ -60,54 +75,45 @@ def place(buf, sig, t0):
 
 # ------------------------------------------------------------ arrangement
 def phrase_kind(t):
-    if t < 22: return "intro"
     if 186 <= t < 252: return "minor"
-    if t > 450: return "end"
+    if t > 440: return "end"
     return None
 
 def compose():
-    L = int(SR * (DUR + 1)); mel = np.zeros(L); acc = np.zeros(L)
-    t = 0.6
+    L = int(SR * (DUR + 4)); mel = np.zeros(L); acc = np.zeros(L)
+    t = 0.8
     i = 0
     rng = np.random.default_rng(62)
-    while t + 8 * BAR <= DUR - 3.5:
+    while t + 8 * BAR <= DUR - 4.5:
         kind = phrase_kind(t)
         if kind == "minor": notes, chords = M, M_CH
-        elif kind in ("intro", "end"): notes, chords = A, A_CH
+        elif kind == "end" or i == 0: notes, chords = A, A_CH
         else: notes, chords = (A, A_CH) if i % 2 == 0 else (B, B_CH)
-        warm = 322 <= t < 468   # Christmas morning: fuller
+        sing = (i % 3 != 2) or kind == "end"     # every third phrase: chords only
         for b, (bar, ch) in enumerate(zip(notes, chords)):
             tb = t + b * BAR
-            # melody (music box), octave up for the intro / ending sparkle
-            tt = tb
-            for m, beats in bar:
-                up = 12 if kind in ("intro",) else 0
-                v = 0.8 + 0.1 * rng.random()
-                place(mel, musicbox(hz(m + up), beats * BEAT, v), tt + rng.normal(0, 0.006))
-                if warm and beats >= 2:  # countermelody a third below
-                    place(mel, musicbox(hz(m - 4 if ch in ("D", "G", "A") else m - 3), beats * BEAT, 0.35), tt + 0.02)
-                tt += beats * BEAT
-            if kind == "intro":
-                continue
-            notes_c = CHORDS[ch]
-            if kind == "minor":
-                for m in notes_c: place(acc, pad(hz(m), BAR, 0.9), tb)
-                place(acc, piano(hz(notes_c[0] - 12 if notes_c[0] > 45 else notes_c[0]), BAR, 0.5), tb)
-            else:  # waltz: bass on 1, chord on 2 and 3
-                place(acc, piano(hz(notes_c[0]), BEAT * 1.5, 0.75), tb)
-                for k in (1, 2):
-                    for m in notes_c[1:]:
-                        place(acc, piano(hz(m), BEAT * 0.8, 0.28 if not warm else 0.36), tb + k * BEAT + 0.01 * k)
+            # melody one octave lower than written: soft middle register
+            if sing:
+                tt = tb + 0.03
+                for m, beats in bar:
+                    v = 0.55 + 0.08 * rng.random()
+                    place(mel, soft_piano(hz(m - 12), beats * BEAT, v), tt + rng.normal(0, 0.008))
+                    tt += beats * BEAT
+            # left hand: low bass held for the bar, chord gently broken over beats 1-2-3
+            cn = CHORDS[ch]
+            bass = cn[0] - 12 if cn[0] >= 45 else cn[0]
+            place(acc, soft_piano(hz(bass), BAR, 0.42), tb)
+            for k, m in enumerate(cn[1:]):
+                place(acc, soft_piano(hz(m), BAR - k * BEAT, 0.22 + 0.03 * rng.random()), tb + k * BEAT + 0.02)
         t += 8 * BAR
         i += 1
-    # final D major chord, rolled, right after the last phrase
+    # final D major chord, slowly rolled, right after the last phrase
     tf = t
-    for k, m in enumerate([50, 57, 62, 66, 69, 74]):
-        place(acc, piano(hz(m), 3.5, 0.5), tf + 0.06 * k)
-    place(mel, musicbox(hz(86), 3.0, 0.6), tf + 0.4)
+    for k, m in enumerate([38, 50, 57, 62, 66, 69]):
+        place(acc, soft_piano(hz(m), 4.0, 0.36), tf + 0.12 * k)
     return mel, acc
 
-def reverb(x, seed, secs=2.8, wet=0.32):
+def reverb(x, seed, secs=3.2, wet=0.38):
     rng = np.random.default_rng(seed)
     n = int(SR * secs); t = np.arange(n) / SR
     ir = rng.normal(0, 1, n) * np.exp(-t * 6.9 / secs)
