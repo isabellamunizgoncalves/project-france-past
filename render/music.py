@@ -152,12 +152,12 @@ def main(out):
     L = max(len(voice), int(DUR * SR)) + SR
     voice = np.pad(voice, (0, L - len(voice)))
     music = np.pad(music, ((0, max(0, L - len(music))), (0, 0)))[:L]
-    # ducking: music sits ~22 dB under the voice while speaking, ~12 dB under in pauses
+    # ducking: music sits ~30 dB under the voice while speaking, ~21 dB under in pauses
     act = voice_activity(L)
     vr = np.sqrt(np.mean(voice[act > 0] ** 2))
     mr = np.sqrt(np.mean(music ** 2))
-    g_speak = vr / mr * 10 ** (-22 / 20)
-    g_free = vr / mr * 10 ** (-12 / 20)
+    g_speak = vr / mr * 10 ** (-30 / 20)
+    g_free = vr / mr * 10 ** (-21 / 20)
     g = smooth_env(np.where(act > 0, g_speak, g_free))
     t = np.arange(L) / SR
     g *= np.clip(t / 1.5, 0, 1) * np.clip((DUR + 0.3 - t) / 2.0, 0, 1)  # fade in / out
@@ -165,9 +165,15 @@ def main(out):
     mix *= 0.89 / (np.abs(mix).max() + 1e-9)
     mix = mix[:int(DUR * SR)]
     import wave
-    with wave.open(out, "wb") as w:
+    tmp = out + ".raw.wav"
+    with wave.open(tmp, "wb") as w:
         w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
         w.writeframes((np.clip(mix, -1, 1) * 32767).astype("<i2").tobytes())
+    # louder, steadier voice: gentle compression, then loudness to -14 LUFS (YouTube) with -1.5 dBTP ceiling
+    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", tmp, "-af",
+                    "acompressor=threshold=-20dB:ratio=3:attack=5:release=150:makeup=2,"
+                    "loudnorm=I=-14:TP=-1.5:LRA=8", "-ar", str(SR), out], check=True)
+    os.remove(tmp)
     print("wrote", out, f"music gain speak {20*np.log10(g_speak):.1f} dB, free {20*np.log10(g_free):.1f} dB")
 
 if __name__ == "__main__":
