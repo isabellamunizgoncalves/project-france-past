@@ -59,7 +59,11 @@ def cam_box(bw, bh, W, H, z, x, y):
     cw, ch = W / (cover * z), H / (cover * z)
     cx = bw / 2 + x * (bw - cw) / 2
     cy = bh / 2 + y * (bh - ch) / 2
-    return (cx - cw / 2, cy - ch / 2, cx + cw / 2, cy + ch / 2)
+    return safe_box(cx - cw / 2, cy - ch / 2, cx + cw / 2, cy + ch / 2, bw, bh)
+
+def safe_box(x0, y0, x1, y1, bw, bh):
+    """Keep the crop inside the base (float rounding can go a hair negative)."""
+    return (max(0.0, x0), max(0.0, y0), min(float(bw), x1), min(float(bh), y1))
 
 class Cam:
     """Camera move: z, x, y each (start, end); eased over the shot.
@@ -78,7 +82,7 @@ class Cam:
         cw, ch = W / (cover * z), H / (cover * z)
         u, v = lerp(self.c[0][0], self.c[1][0], e) * bw, lerp(self.c[0][1], self.c[1][1], e) * bh
         u = clamp(u, cw / 2, bw - cw / 2); v = clamp(v, ch / 2, bh - ch / 2)
-        return (u - cw / 2, v - ch / 2, u + cw / 2, v + ch / 2)
+        return safe_box(u - cw / 2, v - ch / 2, u + cw / 2, v + ch / 2, bw, bh)
 
 class Hero:
     """Something that fills the frame. frame(t, k) -> RGB image W x H.
