@@ -61,8 +61,10 @@ def shots():
     add(125.10, Photo(24, PUSH(1.02, 1.12)), [cap(131.12, "1962 : achats record", size=130, until=141.2)])
     # 17–21 letters
     add(141.65, Photo(28, PUSH(1.0, 1.08)))
-    add(147.05, TypedCard([("MARETTE, Jacques", 120), ("Ministre des Postes", 92)], t0=1.6, cps=15, cam=PUSH(1.0, 1.05)))
-    add(153.95, TypedCard([("DOLTO, Françoise", 120), ("Psychanalyste", 92), ("Sœur de Jacques Marette", 92)], t0=3.4, cps=15, cam=PUSH(1.0, 1.05)))
+    add(147.05, TypedCard([("MARETTE, Jacques", 120), ("Ministre des Postes", 92)], t0=1.6, cps=15, cam=PUSH(1.0, 1.05),
+                    photo=("assets/people/marette_b.jpg", None, 2.5)))
+    add(153.95, TypedCard([("DOLTO, Françoise", 120), ("Psychanalyste", 92), ("Sœur de Jacques Marette", 92)], t0=3.4, cps=15, cam=PUSH(1.0, 1.05),
+                    photo=("assets/people/dolto.jpg", (125, 60, 475, 527), -2.5)))
     add(163.50, Letter(t_out=0.4, cam=PUSH(1.0, 1.06)),
         [cap(165.18, "environ 5 000 enfants", until=170.4, size=130), cap(170.60, ["Libourne", "+ d'1 million de lettres / an"], size=120)])
     add(174.50, TV("night", cam=PUSH(1.0, 1.12)),

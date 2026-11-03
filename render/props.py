@@ -560,10 +560,26 @@ class TV(Canvas):
             im.paste((200, 214, 230), (0, 0), sp)
 
 # =============================================================== TYPED INDEX CARD
+def photo_print(path, h, s, crop=None, angle=3.0):
+    """Old black & white print with a white border, h design units tall -> RGBA."""
+    from PIL import ImageOps
+    im = Image.open(os.path.join(ROOT, path)).convert("L")
+    if crop: im = im.crop(crop)
+    im = ImageOps.autocontrast(im, cutoff=1)
+    H = round(h * s); W = round(H * im.width / im.height)
+    im = im.resize((W, H), Image.LANCZOS).filter(ImageFilter.UnsharpMask(radius=2 * s + 0.5, percent=40, threshold=2))
+    im = ImageOps.colorize(im, (24, 20, 18), (238, 232, 218))
+    b = round(h * 0.05 * s)
+    pr = Image.new("RGBA", (W + 2 * b, H + 3 * b), (244, 240, 230, 255))
+    pr.paste(im, (b, b))
+    return pr.rotate(angle, expand=True, resample=Image.BICUBIC)
+
 class TypedCard(Canvas):
-    """Index card on a desk; lines typed at `cps` chars/s starting at t0 (shot-relative)."""
-    def __init__(self, lines, t0=0.3, cps=16, cam=None):
-        super().__init__(cam); self.lines, self.t0, self.cps = lines, t0, cps
+    """Index card on a desk; lines typed at `cps` chars/s starting at t0 (shot-relative).
+    Optional photo=(path, crop, angle): a period print laid on the card when typing starts."""
+    def __init__(self, lines, t0=0.3, cps=16, cam=None, photo=None):
+        super().__init__(cam); self.lines, self.t0, self.cps, self.photo = lines, t0, cps, photo
+        self._pr = None
     def base(self, u):
         im = wood_texture(round(3840 * u), round(2160 * u), (96, 62, 36), seed=81, plank=round(600 * u))
         card = paper_texture(round(2500 * u), round(1500 * u), (240, 234, 216), seed=82, amt=0.04).convert("RGBA")
@@ -577,6 +593,15 @@ class TypedCard(Canvas):
         a = np.asarray(im, np.float32) * (0.4 + 0.75 * g[..., None])
         return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
     def overlay(self, im, t, k, P, s):
+        if self.photo:
+            a = ease_out(clamp((t - self.t0 + 0.6) / 0.7))
+            if a > 0:
+                if self._pr is None or self._pr[0] != round(s, 4):
+                    path, crop, ang = self.photo
+                    self._pr = (round(s, 4), photo_print(path, 1150, s, crop, ang))
+                pr = self._pr[1]
+                x, y = P(2660, 1080 - (1 - a) * 120)
+                paste_shadowed(im, pr, x - pr.width / 2, y - pr.height / 2, (22 * s, 30 * s), 26 * s, 0.6, a)
         n = int((t - self.t0) * self.cps)
         if n <= 0: return
         lay = Image.new("RGBA", im.size, (0, 0, 0, 0))

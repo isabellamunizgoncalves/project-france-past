@@ -17,7 +17,7 @@
   78 (Lyon), 79 (Enghien), 84 (étrennes), 91 (givre), 94 (école sous la neige, teaser).
 - Avertissement à l'écran au début : « Certaines images sont des reconstitutions ».
 - Musique de fond : composée en code (boîte à musique / piano, mélodie originale), ducking sous la voix.
-- Jacques Marette / Françoise Dolto : photos réelles en recherche par l'utilisatrice ; sinon fiche nom tapé à la machine.
+- Jacques Marette / Françoise Dolto : photos fournies par l'utilisatrice (assets/people/), posées en tirage N&B sur la fiche tapée à la machine.
   (Photos refusées : aperçu Bridgeman filigrané ; portraits < 320 px ; Dolto âgée, source inconnue.)
 - Tout le reste dessiné en code : table en chêne, carte scolaire de France, calendrier, fiche de paie,
   pièces, lettre, TV N&B (sans personnage), épingles de température, rangée de souliers, givre, neige.
