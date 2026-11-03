@@ -308,7 +308,8 @@ class MonthCalendar(Canvas):
     def base(self, u):
         return wall(u)
     def sheet(self, i, u):
-        key = (i, u)
+        key = (i, round(u, 2))
+        if len(self._sheets) > 8: self._sheets.clear()
         if key not in self._sheets: self._sheets[key] = month_sheet(*self.months[i][:2], u)
         return self._sheets[key]
     def overlay(self, im, t, k, P, s):
@@ -340,7 +341,8 @@ class Ephemeride(Canvas):
         d.ellipse([1890 * u, 250 * u, 1950 * u, 310 * u], fill=(40, 30, 24))
         return im
     def page(self, which, s):
-        key = (which, s)
+        key = (which, round(s, 2))
+        if len(self._p) > 6: self._p.clear()
         if key not in self._p:
             self._p[key] = ephemeride_page(*(self.prev if which == 0 else self.cur), s)
         return self._p[key]
@@ -743,7 +745,8 @@ class Shoes(Canvas):
                 if a <= 0: continue
             else: a = 1.0
             kind = 1 if i in (3, 5, 8) else 2 if i in (7,) else 0
-            key = (round(s, 4), L, i)
+            key = (round(s, 2), L, i)
+            if len(self._sprites) > 48: self._sprites.clear()
             if key not in self._sprites:
                 sh = shoe(L, col, s, kind)
                 pair = Image.new("RGBA", (int(sh.width * 1.25), int(sh.height * 1.12)), (0, 0, 0, 0))
@@ -883,7 +886,8 @@ class OakTable(Canvas):
             e = ease_out(clamp((t - t0) / 0.45))
             sp = self.sprite(which, s)
             sc = 0.75 + 0.25 * e + 0.06 * math.sin(clamp((t - t0) / 0.45) * math.pi)
-            ck = (which, round(sc, 3), round(s, 4))
+            ck = (which, round(sc, 2), round(s, 2))
+            if len(self._spr) > 48: self._spr = {k: v for k, v in self._spr.items() if len(k) == 2}
             if ck not in self._spr:
                 self._spr[ck] = sp.resize((max(2, int(sp.width * sc)), max(2, int(sp.height * sc))), Image.BILINEAR).rotate(rot, expand=True, resample=Image.BILINEAR)
             spr = self._spr[ck]
