@@ -2,7 +2,8 @@
 """Confere um roteiro marcado com tags de narração (ElevenLabs) antes de gerar o áudio.
 
 Uso:
-    python3 validar_tags.py roteiro.txt --modo v2|v3 [--limpo saida.txt]
+    python3 validar_tags.py roteiro.txt --modo dp|v2|v3 [--limpo saida.txt]
+    (dp = Dark Planner: nenhuma tag, pausas com reticências)
 
 Mostra ERROS (corrigir sempre) e AVISOS (avaliar caso a caso) e um resumo.
 --limpo grava a versão sem nenhum código (para legenda ou ferramentas sem tags).
@@ -43,7 +44,7 @@ def limpar(texto):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("arquivo")
-    ap.add_argument("--modo", choices=["v2", "v3"], required=True)
+    ap.add_argument("--modo", choices=["dp", "v2", "v3"], required=True)
     ap.add_argument("--limpo", help="grava a versão sem códigos neste arquivo")
     a = ap.parse_args()
 
@@ -59,6 +60,9 @@ def main():
         if not BREAK_RE.fullmatch(m.group(0)):
             erros.append(f"{onde(m.start())}: código mal escrito ou não suportado: {m.group(0)}"
                          ' (use <break time="1.0s" />)')
+    if a.modo == "dp" and breaks:
+        erros.append(f"{len(breaks)} <break> no modo Dark Planner: ele lê o código em voz alta. "
+                     "Use reticências (...) ou linha em branco.")
     if a.modo == "v3" and breaks:
         erros.append(f"{len(breaks)} <break> no modo v3: o Eleven v3 não aceita break. "
                      "Troque por [pause], [short pause], [long pause] ou reticências.")
@@ -88,6 +92,9 @@ def main():
 
     # Tags de colchete
     tags = list(SQUARE_RE.finditer(texto))
+    if a.modo == "dp" and tags:
+        erros.append(f"{len(tags)} [tags] no modo Dark Planner: ele lê em voz alta "
+                     "(ex.: [softly] vira \"Softly\"). Primeira: " + tags[0].group(0))
     if a.modo == "v2" and tags:
         erros.append(f"{len(tags)} [tags] no modo v2: o Multilingual v2 lê em voz alta. "
                      "Exemplo: " + tags[0].group(0))
@@ -120,6 +127,8 @@ def main():
     for par in [p.strip() for p in falado.split("\n\n") if p.strip()]:
         if par.endswith("?"):
             avisos.append(f"parágrafo termina em pergunta sem resposta: «…{par[-60:]}»")
+        if a.modo == "dp" and len(re.findall(r"\.\.\.|…", par)) > 2:
+            avisos.append(f"mais de duas reticências no parágrafo (fica arrastado): «{par[:60]}…»")
         if par.count("!") > 1:
             avisos.append(f"mais de um ! no mesmo parágrafo: «{par[:60]}…»")
 
