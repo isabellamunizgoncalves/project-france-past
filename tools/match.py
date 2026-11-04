@@ -2,7 +2,10 @@
 import json, re, sys, difflib, unicodedata
 raw = json.load(open(sys.argv[1]))
 script = open(sys.argv[2], encoding='utf-8').read()
+from num2words import num2words
 def norm(t):
+    # spell digits in French so "6" (Whisper) matches "six" (script)
+    t = re.sub(r"\d+", lambda m: num2words(int(m.group()), lang='fr'), t)
     t = unicodedata.normalize('NFD', t.lower())
     t = ''.join(c for c in t if unicodedata.category(c) != 'Mn')
     return re.sub(r"[^a-z0-9]", "", t)
@@ -11,7 +14,13 @@ stoks = []
 for pi, p in enumerate(paras):
     for t in p.split():
         stoks.append({"w": t, "p": pi})
-wt = raw["words"]
+# Whisper splits elisions/hyphens ("n" + "'était", "celui" + "-là"): glue them back
+wt = []
+for w in raw["words"]:
+    if wt and w["w"][:1] in "'’-" :
+        wt[-1] = {"w": wt[-1]["w"] + w["w"], "s": wt[-1]["s"], "e": w["e"]}
+    else:
+        wt.append(dict(w))
 A = [norm(t["w"]) for t in stoks]; B = [norm(w["w"]) for w in wt]
 sm = difflib.SequenceMatcher(None, A, B, autojunk=False)
 for tag, i1, i2, j1, j2 in sm.get_opcodes():
